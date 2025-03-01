@@ -1,0 +1,84 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+eggs/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebooks checkpoints (por si usas notebooks para análisis)
+.ipynb_checkpoints/
+
+# Pytest / Testing
+.pytest_cache/
+coverage/
+
+# Mypy / Typing
+.mypy_cache/
+.dmypy.json
+mypy-report.json
+
+# Logs y temp files
+*.log
+*.out
+*.tmp
+*.bak
+
+# Config y secretos
+.env
+.env.*
+*.local
+
+# MacOS y otros OS
+.DS_Store
+Thumbs.db
+
+# Containers y deploy (si metes Docker o similar)
+docker-compose.override.yml
+*.dockerfile
+
+# Cache de pip y wheel
+pip-log.txt
+pip-delete-this-directory.txt
+__pypackages__/
+
+# Compilados de Cython
+*.c
+*.so
+
+# Librerías
+site/
+
+# Archivos de profiling
+*.prof
+
+# Archivos de lock
+poetry.lock
+Pipfile.lock
+
+# Excel y data temporal (si generas reports o datasets intermedios)
+*.xls
+*.xlsx
+*.csv
+
+# Otros
+*.swp
+*.swo
+*.bak
+*.orig
