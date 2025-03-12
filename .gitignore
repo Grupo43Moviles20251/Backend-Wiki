@@ -44,6 +44,7 @@ mypy-report.json
 .env
 .env.*
 *.local
+*.json
 
 # MacOS y otros OS
 .DS_Store
