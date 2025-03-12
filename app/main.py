@@ -1,17 +1,18 @@
 import datetime
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi import security
-from fastapi.security import HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import firebase_admin
-from firebase_admin import credentials, firestore, analytics, auth
+from firebase_admin import credentials, firestore, auth
 from pydantic import BaseModel
 from streamlit import _event
 
 # Inicializar FastAPI
 app = FastAPI()
-
+security =  HTTPBearer()
 # Cargar credenciales de Firebase
 cred = credentials.Certificate("./serviceAccountKey.json")
+
 firebase_admin.initialize_app(cred)
 
 # Cliente Firestore
