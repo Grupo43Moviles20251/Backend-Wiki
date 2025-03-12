@@ -22,8 +22,8 @@ db = firestore.client()
 class User(BaseModel):
     name: str
     email: str
-    password:str
-    adress: str
+    password: str
+    address: str
     birthday: str
     
 # Verificar el token de autenticación
@@ -50,9 +50,9 @@ def signup(user: User):
         user_data = {
             "name": user.name,
             "email": user.email,
-            "adress": user.adress,
+            "address": user.address,
             "birthday": user.birthday,
-            "created_at": datetime.now()
+            "created_at": datetime.datetime.now()
         }
         db.collection('users').document(firebase_user.uid).set(user_data)
 
