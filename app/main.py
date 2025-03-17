@@ -37,14 +37,23 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
 
 # Ruta para registro (Sign Up)
+from firebase_admin import auth, firestore
+
 @app.post("/signup")
 def signup(user: User):
     try:
-        # Crear usuario en Firebase Authentication
-        firebase_user = auth.create_user(
-            email=user.email,
-            password=user.password
-        )
+        # 🔥 Verificar si el usuario YA EXISTE en Firebase Auth
+        try:
+            firebase_user = auth.get_user_by_email(user.email)  
+            user_id = firebase_user.uid  
+            print(f"Usuario {user.email} ya existe en Firebase Auth con UID: {user_id}")
+        except auth.UserNotFoundError:
+            print(f"Usuario {user.email} NO encontrado en Firebase Auth. Creándolo...")
+            firebase_user = auth.create_user(
+                email=user.email,
+                password=user.password
+            )
+            user_id = firebase_user.uid  # Obtenemos el nuevo UID
 
         # Guardar datos del usuario en Firestore
         user_data = {
@@ -54,21 +63,29 @@ def signup(user: User):
             "birthday": user.birthday,
             "created_at": datetime.datetime.now()
         }
-        db.collection('users').document(firebase_user.uid).set(user_data)
+        db.collection('users').document(user_id).set(user_data)
 
-        return {"message": "User created successfully", "uid": firebase_user.uid}
+        return {"message": "User created successfully", "uid": user_id}
+
     except Exception as e:
+        print(f"⚠ Error en el registro: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 # Ruta para obtener datos del usuario (Log In)
 @app.get("/users/me")
 def get_user_data(user: dict = Depends(get_current_user)):
     user_id = user["uid"]
-    doc = db.collection('users').document(user_id).get()
+    print(f"Buscando usuario en Firestore con UID: {user_id}")
+    print ("caca")
+    
+    doc_ref = db.collection('users').document(user_id)
+    doc = doc_ref.get()
+    
     if not doc.exists:
-        raise HTTPException(status_code=404, detail="User not found")
-    return doc.to_dict()
+        print(f"Usuario con UID {user_id} no encontrado en Firestore")
+        raise HTTPException(status_code=404, detail="User not found") 
 
+    return doc.to_dict()
 
 
 # Crear un nuevo usuario
