@@ -76,7 +76,6 @@ def signup(user: User):
 def get_user_data(user: dict = Depends(get_current_user)):
     user_id = user["uid"]
     print(f"Buscando usuario en Firestore con UID: {user_id}")
-    print ("caca")
     
     doc_ref = db.collection('users').document(user_id)
     doc = doc_ref.get()
