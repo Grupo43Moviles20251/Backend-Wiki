@@ -171,8 +171,66 @@ def get_restaurants():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/restaurants/type/{type}", response_model=List[Restaurant])
+def get_restaurants_by_type(type: int):
+    try:
+        # Obtener todos los documentos de la colección `restaurants` donde el campo `type` sea igual al parámetro `type`
+        restaurants_ref = db.collection("retaurants").where("type", "==", type).stream()
+        restaurants = []
 
+        # Recorrer los documentos y agregar los detalles a la lista
+        for doc in restaurants_ref:
+            restaurant_data = doc.to_dict()
 
+            # Verificar si los campos esenciales existen
+            if 'name' in restaurant_data and 'products' in restaurant_data:
+                restaurant_data["id"] = doc.id  # Agregar el id del documento al restaurante
+                restaurants.append(restaurant_data)
+
+        return restaurants
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/restaurants/search/{query}", response_model=List[Restaurant])
+def search_restaurants(query: str):
+    try:
+        # Normalizar el query eliminando espacios y convirtiendo a minúsculas, luego separar en palabras
+        query_normalized = query.strip().lower().replace(" ", "")
+        query_words = query_normalized.split()
+
+        # Obtener todos los restaurantes de la colección
+        restaurants_ref = db.collection("retaurants").stream()
+        
+        restaurants = []
+
+        # Recorrer todos los restaurantes para aplicar la búsqueda
+        for doc in restaurants_ref:
+            restaurant_data = doc.to_dict()
+
+            # Normalizar el nombre del restaurante
+            restaurant_name_normalized = restaurant_data.get("name", "").strip().lower().replace(" ", "")
+
+            # Verificar si alguna de las palabras de la búsqueda está en el nombre del restaurante
+            if any(word in restaurant_name_normalized for word in query_words):
+                restaurant_data["id"] = doc.id  # Agregar el id del restaurante
+                if restaurant_data not in restaurants:
+                    restaurants.append(restaurant_data)
+
+            # Verificar dentro de los productos
+            if 'products' in restaurant_data:
+                for product in restaurant_data['products']:
+                    # Normalizar el nombre del producto
+                    product_name_normalized = product.get("productName", "").strip().lower()
+
+                    # Verificar si alguna de las palabras de la búsqueda está en el nombre del producto
+                    if any(word in product_name_normalized for word in query_words):
+                        if restaurant_data not in restaurants:
+                            restaurant_data["id"] = doc.id  # Agregar el id del restaurante
+                            restaurants.append(restaurant_data)
+
+        return restaurants
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # 📌 Ruta para agregar un nuevo restaurante
 @app.post("/restaurants", response_model=dict)
