@@ -41,7 +41,8 @@ class Restaurant(BaseModel):
     name: str
     imageUrl: str
     description: str
-    location: List[float]  # Geolocalización
+    latitude: float
+    longitude: float
     address: str
     products: List[Product]
     rating: float
@@ -148,7 +149,7 @@ def delete_user(user_id: str):
 def get_restaurants():
     try:
         # Obtener todos los documentos de la colección `restaurants`
-        restaurants_ref = db.collection("restaurants").stream()
+        restaurants_ref = db.collection("retaurants").stream()
         restaurants = []
 
         # Mostrar la cantidad de documentos obtenidos
