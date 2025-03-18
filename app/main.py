@@ -154,23 +154,15 @@ def get_restaurants():
 
         # Mostrar la cantidad de documentos obtenidos
         docs = list(restaurants_ref)
-        print(f"Cantidad de restaurantes encontrados: {len(docs)}")
-
-        # Verificar si la colección está vacía
-        if len(docs) == 0:
-            print("No se encontraron restaurantes.")
         
         # Recorrer los documentos y agregar los detalles a la lista
         for doc in docs:
             restaurant_data = doc.to_dict()
-            print(f"Documento {doc.id}: {restaurant_data}")  # Mostrar el documento
 
             # Verificar si los campos esenciales existen
             if 'name' in restaurant_data and 'products' in restaurant_data:
                 restaurant_data["id"] = doc.id  # Agregar el id del documento al restaurante
                 restaurants.append(restaurant_data)
-            else:
-                print(f"Falta algún campo esencial en el restaurante {doc.id}")
 
         return restaurants
     
