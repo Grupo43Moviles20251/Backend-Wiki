@@ -87,7 +87,7 @@ def get_features_increasing_rate():
             for month in sorted_months:
                 current_count = usage_by_month[month].get(feature_name, 0)
                 if previous_count != 0:
-                    rate = (current_count - previous_count) / previous_count * 100
+                    rate = round((current_count - previous_count) / previous_count * 100,2)
                 else:
                     rate = 0
                 rates.append({month: rate})
@@ -143,11 +143,11 @@ def get_features_increasing_rate():
 
                 # Calcular el rate de aumento
                 if previous_count is None:
-                    rate = None  # No hay día anterior para calcular el aumento
+                    rate = 0  # No hay día anterior, entonces el rate es 0
                 elif previous_count == 0:
                     rate = 0
                 else:
-                    rate = (current_count - previous_count) / previous_count * 100
+                    rate = round((current_count - previous_count) / previous_count * 100,2)
 
                 rates.append({day: rate})
                 previous_count = current_count
