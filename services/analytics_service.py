@@ -3,6 +3,14 @@ from firebase_admin import credentials, firestore
 from fastapi import FastAPI, HTTPException
 from datetime import datetime
 
+from pydantic import BaseModel
+
+class ScreenTimeData(BaseModel):
+    screen_name: str
+    duration: int
+    timestamp: str
+
+
 # Inicializa la aplicación de Firebase con el archivo de credenciales
 cred = credentials.Certificate("../app/serviceAccountKey.json")
 firebase_admin.initialize_app(cred)
@@ -158,3 +166,18 @@ def get_features_increasing_rate():
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al obtener el aumento de uso de funcionalidades: {str(e)}")
+
+
+@app.post("/analyticspages")
+async def track_screen_time(data: ScreenTimeData):
+    try:
+        # Guarda los datos en Firestore
+        doc_ref = db.collection("screen_times").document()
+        doc_ref.set({
+            "screen_name": data.screen_name,
+            "duration": data.duration,
+            "timestamp": data.timestamp,
+        })
+        return {"message": "Datos guardados exitosamente"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
