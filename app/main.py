@@ -274,7 +274,7 @@ async def track_screen_time(data: ScreenTimeData):
         doc_ref.set({
             "screen_name": data.screen_name,
             "duration": data.duration,
-            "timestamp": datetime.fromisoformat(data.timestamp),
+            "timestamp": data.timestamp,
         })
         return {"message": "Datos guardados exitosamente"}
     except Exception as e:
