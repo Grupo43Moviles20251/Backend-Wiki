@@ -48,6 +48,11 @@ class Restaurant(BaseModel):
     rating: float
     type: int
 
+class ScreenTimeData(BaseModel):
+    screen_name: str
+    duration: int
+    timestamp: str
+
     
 # Verificar el token de autenticación
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
@@ -257,5 +262,20 @@ def update_restaurant(restaurant_id: str, restaurant: Restaurant, user: dict = D
             restaurant_ref.update({"available": False})
         
         return {"message": "Restaurant updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+@app.post("/analyticspages")
+async def track_screen_time(data: ScreenTimeData):
+    try:
+        # Guarda los datos en Firestore
+        doc_ref = db.collection("screen_times").document()
+        doc_ref.set({
+            "screen_name": data.screen_name,
+            "duration": data.duration,
+            "timestamp": datetime.fromisoformat(data.timestamp),
+        })
+        return {"message": "Datos guardados exitosamente"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
