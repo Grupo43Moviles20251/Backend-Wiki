@@ -1,3 +1,4 @@
+from collections import defaultdict
 import firebase_admin
 from firebase_admin import credentials, firestore
 from fastapi import FastAPI, HTTPException
@@ -179,5 +180,55 @@ async def track_screen_time(data: ScreenTimeData):
             "timestamp": data.timestamp,
         })
         return {"message": "Datos guardados exitosamente"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/screen-analytics")
+async def get_screen_analytics():
+    try:
+        screen_times_ref = db.collection("screen_times")
+        docs = screen_times_ref.stream()
+
+        
+        screen_data = defaultdict(lambda: defaultdict(lambda: {"total_duration": 0, "session_count": 0}))
+
+        
+        for doc in docs:
+            data = doc.to_dict()
+            screen_name = data["screen_name"]
+            duration = data["duration"]
+            timestamp = data["timestamp"]  # Asegúrate de que este campo exista en tus documentos
+
+            # Convertir el timestamp a una hora del día (0-23)
+            hour = datetime.fromisoformat(timestamp).hour
+            
+
+            # Sumar el tiempo total y aumentar el conteo de sesiones por pantalla y por hora
+            screen_data[screen_name][hour]["total_duration"] += duration
+            screen_data[screen_name][hour]["session_count"] += 1
+
+        # Calcular el tiempo promedio por pantalla y por hora
+        analytics = []
+        for screen_name, hours_data in screen_data.items():
+            screen_analytics = {
+                "screen_name": screen_name,
+                "hourly_analytics": []
+            }
+            for hour, stats in hours_data.items():
+                avg_duration = stats["total_duration"] / stats["session_count"]
+                screen_analytics["hourly_analytics"].append({
+                    "hour": hour,
+                    "total_duration": stats["total_duration"],
+                    "session_count": stats["session_count"],
+                    "avg_duration": avg_duration,
+                })
+            # Ordenar por hora
+            screen_analytics["hourly_analytics"].sort(key=lambda x: x["hour"])
+            analytics.append(screen_analytics)
+
+        # Ordenar por tiempo total descendente
+        analytics.sort(key=lambda x: sum(h["total_duration"] for h in x["hourly_analytics"]), reverse=True)
+
+        return {"analytics": analytics}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
