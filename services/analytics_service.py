@@ -232,3 +232,40 @@ async def get_screen_analytics():
         return {"analytics": analytics}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/average-time-spent")
+async def get_average_time_spent():
+    try:
+        # Obtén los datos de la colección de tiempos de pantalla
+        screen_times_ref = db.collection("screen_times")
+        docs = screen_times_ref.stream()
+
+        # Inicializa un diccionario para almacenar la duración total y la cantidad de sesiones por pantalla
+        screen_data = defaultdict(lambda: {"total_duration": 0, "session_count": 0})
+
+        # Procesa los documentos para sumar la duración por pantalla
+        for doc in docs:
+            data = doc.to_dict()
+            screen_name = data["screen_name"]
+            duration = data["duration"]
+
+            # Suma la duración total y aumenta el contador de sesiones para cada pantalla
+            if screen_name == "HomePage" or screen_name == "SearchPage":
+                screen_data[screen_name]["total_duration"] += duration
+                screen_data[screen_name]["session_count"] += 1
+
+        # Calcula el tiempo promedio por pantalla
+        average_time_spent = []
+        for screen_name, data in screen_data.items():
+            if data["session_count"] > 0:
+                avg_duration = data["total_duration"] / data["session_count"]
+                average_time_spent.append({
+                    "screen_name": screen_name,
+                    "average_duration": avg_duration,
+                    "session_count": data["session_count"],
+                })
+
+        return {"average_time_spent": average_time_spent}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
