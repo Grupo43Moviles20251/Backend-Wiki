@@ -55,6 +55,67 @@ def get_features_usage():
         raise HTTPException(status_code=500, detail=f"Error al obtener el uso de funcionalidades: {str(e)}")
 
 
+# @app.get("/features-increasing-rate")
+# def get_features_increasing_rate():
+#     try:
+#         features_ref = db.collection("feature_usage").stream()
+#         usage_by_month = {}
+
+#         # Paso 1: Agrupar los datos por mes
+#         for feature in features_ref:
+#             data = feature.to_dict()
+#             doc_id = feature.id  # El nombre del documento es la fecha (YYYY-MM-DD)
+
+#             # Extraer el mes del ID del documento
+#             try:
+#                 month = datetime.strptime(doc_id, "%Y-%m-%d").strftime("%Y-%m")
+#             except ValueError:
+#                 continue  # Ignorar si el ID no tiene el formato esperado
+
+#             # Inicializar el mes en el diccionario si no existe
+#             if month not in usage_by_month:
+#                 usage_by_month[month] = {}
+
+#             # Sumar los accesos por cada funcionalidad
+#             for feature_name, count in data.items():
+#                 if feature_name == "last_used_by":
+#                     continue  # Ignorar el campo de usuario
+#                 if feature_name not in usage_by_month[month]:
+#                     usage_by_month[month][feature_name] = 0
+#                 usage_by_month[month][feature_name] += count
+
+#         # Paso 2: Calcular el rate de aumento mensual para cada funcionalidad
+#         increasing_rate = {}
+
+#         # Obtener los meses en orden cronológico
+#         sorted_months = sorted(usage_by_month.keys())
+
+#         for feature_name in usage_by_month[sorted_months[0]]:
+#             rates = []
+#             previous_count = 0
+#             for month in sorted_months:
+#                 current_count = usage_by_month[month].get(feature_name, 0)
+#                 if previous_count != 0:
+#                     rate = round((current_count - previous_count) / previous_count * 100,2)
+#                 else:
+#                     rate = 0
+#                 rates.append({month: rate})
+#                 previous_count = current_count
+
+#             increasing_rate[feature_name] = rates
+
+#         return {"features_increasing_rate": increasing_rate}
+
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Error al obtener el aumento de uso de funcionalidades: {str(e)}")
+
+from fastapi import FastAPI, HTTPException
+from datetime import datetime
+from google.cloud import firestore
+
+app = FastAPI()
+db = firestore.Client()
+
 @app.get("/features-increasing-rate")
 def get_features_increasing_rate():
     try:
@@ -84,30 +145,49 @@ def get_features_increasing_rate():
                     usage_by_month[month][feature_name] = 0
                 usage_by_month[month][feature_name] += count
 
-        # Paso 2: Calcular el rate de aumento mensual para cada funcionalidad
+        # Paso 2: Calcular el rate de aumento mensual para cada pantalla
         increasing_rate = {}
 
         # Obtener los meses en orden cronológico
         sorted_months = sorted(usage_by_month.keys())
 
-        for feature_name in usage_by_month[sorted_months[0]]:
-            rates = []
-            previous_count = 0
-            for month in sorted_months:
-                current_count = usage_by_month[month].get(feature_name, 0)
+        # Calcular la tasa de aumento para cada vista
+        for month in sorted_months:
+            for feature_name, count in usage_by_month[month].items():
+                if feature_name == "last_used_by":
+                    continue  # Ignorar el campo de usuario
+                if feature_name not in increasing_rate:
+                    increasing_rate[feature_name] = []
+
+                # Obtenemos el count del mes anterior si existe
+                previous_count = 0
+                if sorted_months.index(month) > 0:
+                    previous_month = sorted_months[sorted_months.index(month) - 1]
+                    previous_count = usage_by_month[previous_month].get(feature_name, 0)
+
+                # Calculamos el rate
                 if previous_count != 0:
-                    rate = round((current_count - previous_count) / previous_count * 100,2)
+                    rate = round((count - previous_count) / previous_count * 100, 2)
                 else:
                     rate = 0
-                rates.append({month: rate})
-                previous_count = current_count
 
-            increasing_rate[feature_name] = rates
+                # Añadimos al resultado el rate y la fecha
+                increasing_rate[feature_name].append({month: rate})
 
-        return {"features_increasing_rate": increasing_rate}
+        # Reorganizar el JSON como se pide, con la fecha como clave y rate de cada view
+        result = {}
+        for feature_name, rates in increasing_rate.items():
+            for rate in rates:
+                for month, value in rate.items():
+                    if month not in result:
+                        result[month] = {}
+                    result[month][feature_name] = value
+
+        return {"features_increasing_rate": result}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al obtener el aumento de uso de funcionalidades: {str(e)}")
+
 
 @app.get("/features-increasing-rate-daily")
 def get_features_increasing_rate():
