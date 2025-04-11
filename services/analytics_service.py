@@ -109,12 +109,6 @@ def get_features_usage():
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=f"Error al obtener el aumento de uso de funcionalidades: {str(e)}")
 
-from fastapi import FastAPI, HTTPException
-from datetime import datetime
-from google.cloud import firestore
-
-app = FastAPI()
-db = firestore.Client()
 
 @app.get("/features-increasing-rate")
 def get_features_increasing_rate():
