@@ -84,7 +84,7 @@ def signup(user: User):
             "email": user.email,
             "address": user.address,
             "birthday": user.birthday,
-            "created_at": datetime.datetime.now()
+            "created_at": datetime.now(),
         }
         db.collection('users').document(user_id).set(user_data)
 
