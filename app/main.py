@@ -144,7 +144,7 @@ def delete_user(user_id: str):
     return {"message": "User deleted successfully"}
 
 
-
+# Ruta para obtener todos los restaurantes
 @app.get("/restaurants", response_model=List[Restaurant])
 def get_restaurants():
     try:
@@ -170,7 +170,7 @@ def get_restaurants():
         print(f"Error al obtener restaurantes: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
+# Ruta para obtener un restaurante por tipo
 @app.get("/restaurants/type/{type}", response_model=List[Restaurant])
 def get_restaurants_by_type(type: int):
     try:
@@ -191,6 +191,7 @@ def get_restaurants_by_type(type: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Ruta para buscar restaurantes por nombre o productos
 @app.get("/restaurants/search/{query}", response_model=List[Restaurant])
 def search_restaurants(query: str):
     try:
@@ -231,8 +232,33 @@ def search_restaurants(query: str):
         return restaurants
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+#Ruta para obtener un producto por ID
+@app.get("/products/{product_id}")
+def get_product_by_id(product_id: int):
+    try:
+        # Obtener todos los documentos de la colección `restaurants`
+        restaurants_ref = db.collection("retaurants").stream()
+        products = []
 
-# 📌 Ruta para agregar un nuevo restaurante
+        # Recorrer los documentos y buscar el producto por ID
+        for doc in restaurants_ref:
+            restaurant_data = doc.to_dict()
+            if 'products' in restaurant_data:
+                for product in restaurant_data['products']:
+                    if product['productId'] == product_id:
+                        product['restaurantId'] = doc.id  # Agregar el id del restaurante al producto
+                        products.append(product)
+
+        if not products:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        return products
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Ruta para agregar un nuevo restaurante
 @app.post("/restaurants", response_model=dict)
 def create_restaurant(restaurant: Restaurant, user: dict = Depends(get_current_user)):
     try:
@@ -245,7 +271,7 @@ def create_restaurant(restaurant: Restaurant, user: dict = Depends(get_current_u
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 📌 Ruta para actualizar la disponibilidad del restaurante
+# Ruta para actualizar la disponibilidad del restaurante
 @app.put("/restaurants/{restaurant_id}", response_model=dict)
 def update_restaurant(restaurant_id: str, restaurant: Restaurant, user: dict = Depends(get_current_user)):
     try:
