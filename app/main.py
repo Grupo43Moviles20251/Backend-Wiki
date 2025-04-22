@@ -65,7 +65,7 @@ from firebase_admin import auth, firestore
 @app.post("/signup")
 def signup(user: User):
     try:
-        # 🔥 Verificar si el usuario YA EXISTE en Firebase Auth
+        # Verificar si el usuario YA EXISTE en Firebase Auth
         try:
             firebase_user = auth.get_user_by_email(user.email)  
             user_id = firebase_user.uid  
@@ -234,26 +234,31 @@ def search_restaurants(query: str):
         raise HTTPException(status_code=500, detail=str(e))
     
 #Ruta para obtener un producto por ID
-@app.get("/products/{product_id}")
-def get_product_by_id(product_id: int):
+@app.get("/products/{product_id}", response_model=Restaurant)
+def get_restaurant_by_product(product_id: int):
     try:
         # Obtener todos los documentos de la colección `restaurants`
-        restaurants_ref = db.collection("retaurants").stream()
-        products = []
+        restaurants_ref = db.collection("restaurants").stream()
 
         # Recorrer los documentos y buscar el producto por ID
         for doc in restaurants_ref:
             restaurant_data = doc.to_dict()
+
             if 'products' in restaurant_data:
-                for product in restaurant_data['products']:
-                    if product['productId'] == product_id:
-                        product['restaurantId'] = doc.id  # Agregar el id del restaurante al producto
-                        products.append(product)
+                # Filtramos los productos para que solo agreguemos los productos que coinciden
+                matching_products = [
+                    product for product in restaurant_data['products'] if product['productId'] == product_id
+                ]
+                
+                if matching_products:  # Si encontramos el producto, agregamos toda la información del restaurante
+                    # Agregar el id del restaurante
+                    restaurant_data["id"] = doc.id
+                    restaurant_data["products"] = matching_products  # Solo los productos que coinciden
+                    return restaurant_data  # Devolver el restaurante encontrado con el producto
 
-        if not products:
-            raise HTTPException(status_code=404, detail="Product not found")
+        # Si no se encuentra ningún restaurante con el producto solicitado
+        raise HTTPException(status_code=404, detail="Product not found in any restaurant")
 
-        return products
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -285,4 +290,3 @@ def update_restaurant(restaurant_id: str, restaurant: Restaurant, user: dict = D
         return {"message": "Restaurant updated successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
