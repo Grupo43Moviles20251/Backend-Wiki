@@ -245,7 +245,7 @@ def get_restaurant_by_product(product_id: int):
             restaurant_data = doc.to_dict()
 
             if 'products' in restaurant_data:
-                # Filtramos los productos para que solo agreguemos los productos que coinciden
+                # Buscar el producto que coincida con product_id
                 matching_products = [
                     product for product in restaurant_data['products'] if product['productId'] == product_id
                 ]
@@ -261,6 +261,7 @@ def get_restaurant_by_product(product_id: int):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 # Ruta para agregar un nuevo restaurante
