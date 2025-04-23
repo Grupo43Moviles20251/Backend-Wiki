@@ -246,15 +246,11 @@ def get_restaurant_by_product(product_id: int):
 
             if 'products' in restaurant_data:
                 # Buscar el producto que coincida con product_id
-                matching_products = [
-                    product for product in restaurant_data['products'] if product['productId'] == product_id
-                ]
-                
-                if matching_products:  # Si encontramos el producto, agregamos toda la información del restaurante
-                    # Agregar el id del restaurante
-                    restaurant_data["id"] = doc.id
-                    restaurant_data["products"] = matching_products  # Solo los productos que coinciden
-                    return restaurant_data  # Devolver el restaurante encontrado con el producto
+                for product in restaurant_data['products']:
+                    if product['productId'] == product_id:
+                        # Agregar el id del restaurante
+                        restaurant_data["id"] = doc.id
+                        return restaurant_data  # Devolver el restaurante encontrado con el producto
 
         # Si no se encuentra ningún restaurante con el producto solicitado
         raise HTTPException(status_code=404, detail="Product not found in any restaurant")
