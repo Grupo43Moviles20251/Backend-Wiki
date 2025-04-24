@@ -300,3 +300,22 @@ async def get_average_time_spent():
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/devices-summary")
+def get_devices_summary():
+    try:
+        devices_ref = db.collection("userDevices").stream()
+        model_counts = defaultdict(int)
+
+        for doc in devices_ref:
+            data = doc.to_dict()
+            model = data.get("model", "Unknown")
+            model_counts[model] += 1
+
+        result = [{"model": model, "count": count} for model, count in model_counts.items()]
+        result.sort(key=lambda x: x["count"], reverse=True)
+
+        return {"device_model_distribution": result}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving device summary: {str(e)}")
