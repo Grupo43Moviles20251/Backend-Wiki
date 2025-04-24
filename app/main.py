@@ -300,7 +300,7 @@ def order_product(request: OrderRequest):
 
 
     # Buscar restaurante con ese productId (dado que solo hay 1 producto por restaurante)
-    query = (doc for doc in restaurants_ref.stream() if doc.to_dict()['products'][0]['productId'] == 10)
+    query = (doc for doc in restaurants_ref.stream() if doc.to_dict()['products'][0]['productId'] == product_id)
     doc = next(query, None)
     
 
@@ -325,6 +325,7 @@ def order_product(request: OrderRequest):
             "amount": new_amount
         }]
     })
+
 
     # Generar código de reclamo
     claim_code = str(uuid.uuid4())[:8].upper()
