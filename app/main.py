@@ -1,4 +1,5 @@
 from datetime import datetime
+import uuid
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi import security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -47,6 +48,11 @@ class Restaurant(BaseModel):
     products: List[Product]
     rating: float
     type: int
+
+
+class OrderRequest(BaseModel):
+    product_id: int
+    quantity: int
 
     
 # Verificar el token de autenticación
@@ -291,3 +297,49 @@ def update_restaurant(restaurant_id: str, restaurant: Restaurant, user: dict = D
         return {"message": "Restaurant updated successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/order")
+def order_product(request: OrderRequest):
+    product_id = request.product_id
+    quantity = request.quantity
+
+    restaurants_ref = db.collection('retaurants')
+
+
+    # Buscar restaurante con ese productId (dado que solo hay 1 producto por restaurante)
+    query = (doc for doc in restaurants_ref.stream() if doc.to_dict()['products'][0]['productId'] == 10)
+    doc = next(query, None)
+    
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    restaurant_data = doc.to_dict()
+    product = restaurant_data['products'][0]
+
+    if not product.get("available", False):
+        raise HTTPException(status_code=400, detail="Product not available")
+
+    if product.get("amount", 0) < quantity:
+        raise HTTPException(status_code=400, detail="Not enough quantity available")
+
+    # Actualizar la cantidad
+    new_amount = product["amount"] - quantity
+    doc_ref = restaurants_ref.document(doc.id)
+    doc_ref.update({
+        "products": [{
+            **product,
+            "amount": new_amount
+        }]
+    })
+
+    # Generar código de reclamo
+    claim_code = str(uuid.uuid4())[:8].upper()
+
+    return {
+        "message": "Order placed successfully",
+        "code": claim_code,
+        "product_name": product.get("productName"),
+        "quantity_ordered": quantity,
+        "restaurant": restaurant_data.get("name"),
+    }
