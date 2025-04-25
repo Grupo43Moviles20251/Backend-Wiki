@@ -4,7 +4,7 @@ from firebase_admin import credentials, firestore
 from fastapi import FastAPI, HTTPException
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class ScreenTimeData(BaseModel):
     screen_name: str
