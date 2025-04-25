@@ -319,3 +319,33 @@ def get_devices_summary():
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving device summary: {str(e)}")
+    
+
+@app.get("/top-products")
+def obtener_top_productos():
+    ordenes_ref = db.collection('product_orders')
+    ordenes = ordenes_ref.stream()
+
+    productos = defaultdict(int)
+
+    for orden in ordenes:
+        data = orden.to_dict()
+        nombre = data.get("nameProduct", "Desconocido")
+        cantidad = data.get("quantity", 0)
+
+        # Asegurarse que cantidad sea numérico
+        try:
+            cantidad = int(cantidad)
+        except:
+            cantidad = 0
+
+        productos[nombre] += cantidad
+
+    # Convertir a lista y ordenar
+    productos_ordenados = sorted(
+        [{"nameProduct": k, "totalQuantity": v} for k, v in productos.items()],
+        key=lambda x: x["totalQuantity"],
+        reverse=True
+    )
+
+    return {"topProductos": productos_ordenados}
