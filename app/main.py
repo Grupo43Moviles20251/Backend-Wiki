@@ -73,16 +73,20 @@ def signup(user: User):
     try:
         # Verificar si el usuario YA EXISTE en Firebase Auth
         try:
-            firebase_user = auth.get_user_by_email(user.email)  
-            user_id = firebase_user.uid  
+            firebase_user = auth.get_user_by_email(user.email)
+            user_id = firebase_user.uid
             print(f"Usuario {user.email} ya existe en Firebase Auth con UID: {user_id}")
+            
+            # Lanzar error explícito
+            raise HTTPException(status_code=409, detail="Este correo ya está registrado.")
+        
         except auth.UserNotFoundError:
             print(f"Usuario {user.email} NO encontrado en Firebase Auth. Creándolo...")
             firebase_user = auth.create_user(
                 email=user.email,
                 password=user.password
             )
-            user_id = firebase_user.uid  # Obtenemos el nuevo UID
+            user_id = firebase_user.uid  # Nuevo UID
 
         # Guardar datos del usuario en Firestore
         user_data = {
