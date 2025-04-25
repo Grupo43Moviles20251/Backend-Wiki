@@ -349,3 +349,32 @@ def obtener_top_productos():
     )
 
     return {"topProductos": productos_ordenados}
+    
+#Modelo Pydantic para capturar cada evento en la página de detalle
+class DetailEvent(BaseModel):
+    restaurant_id: str
+    event_type: str             # "order" o "directions"
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+#Endpoint para loguear cada pulsación en DetailPage
+@app.post("/detail-events")
+async def log_detail_event(event: DetailEvent):
+    try:
+        # guarda en la colección "detail_events"
+        db.collection("detail_events").add(event.dict())
+        return {"message": "Event logged successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error logging event: {e}")
+
+#Endpoint para devolver conteos totales de cada tipo de evento
+@app.get("/analytics/detail-feature-usage")
+async def get_detail_feature_usage():
+    try:
+        counts = {"order": 0, "directions": 0}
+        for doc in db.collection("detail_events").stream():
+            et = doc.to_dict().get("event_type")
+            if et in counts:
+                counts[et] += 1
+        return counts
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching analytics: {e}")
