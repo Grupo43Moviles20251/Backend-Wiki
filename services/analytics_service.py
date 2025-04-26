@@ -385,33 +385,34 @@ async def get_most_liked_restaurants():
     visitas_ref = db.collection('restaurant_visits')
     visitas = visitas_ref.stream()
 
-    restaurantes = defaultdict(int)
-
-    # Obtener el mes y año actual
-    current_month = datetime.now().strftime("%Y-%m")
+    restaurantes_por_mes = defaultdict(lambda: defaultdict(int))  # {mes: {restaurante: visitas}}
 
     # Contar las visitas por mes y restaurante
     for visita in visitas:
         data = visita.to_dict()
         document_date = visita.id  # Usamos el ID del documento como la fecha (por ejemplo, "2025-04-26")
         
-        # Filtrar solo por el mes actual (asegurarnos que sea el mismo mes)
-        if document_date.startswith(current_month):
-            for restaurant_name, visits in data.items():
-                if restaurant_name != "last_visited_by":  # Ignorar el campo 'last_visited_by'
-                    try:
-                        visitas_restaurante = int(visits)
-                    except ValueError:
-                        visitas_restaurante = 0
+        # Extraer solo el mes y año (formato YYYY-MM)
+        mes_anio = document_date[:7]  # "2025-04" (primeros 7 caracteres)
 
-                    # Agregar al contador total de visitas para el restaurante
-                    restaurantes[restaurant_name] += visitas_restaurante
+        for restaurant_name, visits in data.items():
+            if restaurant_name != "last_visited_by":  # Ignorar el campo 'last_visited_by'
+                try:
+                    visitas_restaurante = int(visits)
+                except ValueError:
+                    visitas_restaurante = 0
 
-    # Convertir a lista y ordenar por visitas
-    restaurantes_ordenados = sorted(
-        [{"restaurantName": k, "totalVisits": v} for k, v in restaurantes.items()],
-        key=lambda x: x["totalVisits"],
-        reverse=True
-    )
+                # Agregar al contador total de visitas por mes y restaurante
+                restaurantes_por_mes[mes_anio][restaurant_name] += visitas_restaurante
 
-    return {"topRestaurantes": restaurantes_ordenados}
+    # Preparar la lista de resultados por mes
+    resultados = []
+    for mes_anio, restaurantes in restaurantes_por_mes.items():
+        restaurantes_ordenados = sorted(
+            [{"restaurantName": k, "totalVisits": v} for k, v in restaurantes.items()],
+            key=lambda x: x["totalVisits"],
+            reverse=True
+        )
+        resultados.append({"mes": mes_anio, "topRestaurantes": restaurantes_ordenados})
+
+    return {"analytics": resultados}
