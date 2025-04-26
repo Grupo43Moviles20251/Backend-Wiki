@@ -378,3 +378,34 @@ async def get_detail_feature_usage():
         return counts
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching analytics: {e}")
+    
+@app.get("/analytics/most-liked-restaurants")
+async def get_most_liked_restaurants():
+    # Obtener las visitas a los restaurantes desde Firestore
+    visitas_ref = db.collection('restaurant_visits')
+    visitas = visitas_ref.stream()
+
+    restaurantes = defaultdict(int)
+
+    # Contar las visitas a cada restaurante
+    for visita in visitas:
+        data = visita.to_dict()
+        nombre_restaurante = data.get("restaurantName", "Desconocido")
+        cantidad_visitas = data.get(nombre_restaurante, 0)
+
+        # Asegurarse que cantidad_visitas sea numérico
+        try:
+            cantidad_visitas = int(cantidad_visitas)
+        except:
+            cantidad_visitas = 0
+
+        restaurantes[nombre_restaurante] += cantidad_visitas
+
+    # Convertir a lista y ordenar por visitas
+    restaurantes_ordenados = sorted(
+        [{"restaurantName": k, "totalVisits": v} for k, v in restaurantes.items()],
+        key=lambda x: x["totalVisits"],
+        reverse=True
+    )
+
+    return {"topRestaurantes": restaurantes_ordenados}
