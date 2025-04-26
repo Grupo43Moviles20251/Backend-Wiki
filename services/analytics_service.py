@@ -387,19 +387,25 @@ async def get_most_liked_restaurants():
 
     restaurantes = defaultdict(int)
 
-    # Contar las visitas a cada restaurante
+    # Obtener el mes y año actual
+    current_month = datetime.now().strftime("%Y-%m")
+
+    # Contar las visitas por mes y restaurante
     for visita in visitas:
         data = visita.to_dict()
-        nombre_restaurante = data.get("restaurantName", "Desconocido")
-        cantidad_visitas = data.get(nombre_restaurante, 0)
+        document_date = visita.id  # Usamos el ID del documento como la fecha (por ejemplo, "2025-04-26")
+        
+        # Filtrar solo por el mes actual (asegurarnos que sea el mismo mes)
+        if document_date.startswith(current_month):
+            for restaurant_name, visits in data.items():
+                if restaurant_name != "last_visited_by":  # Ignorar el campo 'last_visited_by'
+                    try:
+                        visitas_restaurante = int(visits)
+                    except ValueError:
+                        visitas_restaurante = 0
 
-        # Asegurarse que cantidad_visitas sea numérico
-        try:
-            cantidad_visitas = int(cantidad_visitas)
-        except:
-            cantidad_visitas = 0
-
-        restaurantes[nombre_restaurante] += cantidad_visitas
+                    # Agregar al contador total de visitas para el restaurante
+                    restaurantes[restaurant_name] += visitas_restaurante
 
     # Convertir a lista y ordenar por visitas
     restaurantes_ordenados = sorted(
