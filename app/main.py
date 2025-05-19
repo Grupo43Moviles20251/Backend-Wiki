@@ -373,12 +373,12 @@ def decrease_product_stock(restaurant_id: str):
         # Guardar cambios en Firestore
         restaurant_ref.update({"products": [product]})
 
+        order_id = str(uuid4())
+
         return {
-            "message": "Stock actualizado correctamente",
-            "new_amount": product["amount"],
-            "available": product["available"],
-            "product_name": product["productName"]
-        }
+            
+            "order_id": order_id
+        } 
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
