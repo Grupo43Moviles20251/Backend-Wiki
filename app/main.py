@@ -343,48 +343,8 @@ def order_product(request: OrderRequest):
         "restaurant": restaurant_data.get("name"),
     }
 
-@app.post("/order/{restaurant_id}/decrease-stock")
-def decrease_product_stock(restaurant_id: str):
-    try:
-        restaurant_ref = db.collection("retaurants").document(restaurant_id)
-        restaurant_doc = restaurant_ref.get()
-
-        if not restaurant_doc.exists:
-            raise HTTPException(status_code=404, detail="Restaurante no encontrado")
-
-        restaurant_data = restaurant_doc.to_dict()
-        products = restaurant_data.get("products", [])
-
-        if not products:
-            raise HTTPException(status_code=400, detail="El restaurante no tiene productos")
-
-        # Solo trabajamos con el primer producto como mencionaste
-        product = products[0]
-
-        if product["amount"] <= 0:
-            raise HTTPException(status_code=400, detail="El producto ya no tiene stock")
-
-        # Disminuir en 1 el stock
-        product["amount"] -= 1
-
-        # Cambiar a no disponible si el stock llegó a 0
-        if product["amount"] == 0:
-            product["available"] = False
-
-        # Guardar cambios en Firestore
-        restaurant_ref.update({"products": [product]})
-
-        order_id = str(uuid4())
-
-        return {
-            
-            "order_id": order_id[:8]
-        } 
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
     
-@app.post("/order-by-name/{restaurant_name}/decrease-stock")
+@app.post("/order/{restaurant_name}/decrease-stock")
 def decrease_product_stock_by_name(restaurant_name: str):
     try:
         # Buscar el restaurante por nombre
