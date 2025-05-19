@@ -344,6 +344,47 @@ def order_product(request: OrderRequest):
     }
 
     
+# @app.post("/order/{restaurant_name}/decrease-stock")
+# def decrease_product_stock_by_name(restaurant_name: str):
+#     try:
+#         # Buscar el restaurante por nombre
+#         query = db.collection("retaurants").where("name", "==", restaurant_name).limit(1)
+#         results = query.get()
+
+#         if not results:
+#             raise HTTPException(status_code=404, detail="Restaurante no encontrado")
+
+#         restaurant_doc = results[0]
+#         restaurant_ref = restaurant_doc.reference
+#         restaurant_data = restaurant_doc.to_dict()
+#         products = restaurant_data.get("products", [])
+
+#         if not products:
+#             raise HTTPException(status_code=400, detail="El restaurante no tiene productos")
+
+#         product = products[0]
+
+#         if product["amount"] <= 0:
+#             raise HTTPException(status_code=400, detail="El producto ya no tiene stock")
+
+#         # Disminuir el stock
+#         product["amount"] -= 1
+
+#         if product["amount"] == 0:
+#             product["available"] = False
+
+#         # Guardar los cambios
+#         restaurant_ref.update({"products": [product]})
+
+#         order_id = str(uuid4())[:8]
+
+#         return {
+#             "order_id": order_id
+#         }
+
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/order/{restaurant_name}/decrease-stock")
 def decrease_product_stock_by_name(restaurant_name: str):
     try:
