@@ -344,7 +344,7 @@ def order_product(request: OrderRequest):
     }
 
     
-@app.post("/order/{restaurant_name}/decrease-stock")
+@app.get("/order/{restaurant_name}/decrease-stock")
 def decrease_product_stock_by_name(restaurant_name: str):
     try:
         # FastAPI ya convierte %20 a espacio, por lo tanto:
