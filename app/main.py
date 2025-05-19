@@ -347,16 +347,24 @@ def order_product(request: OrderRequest):
 @app.post("/order/{restaurant_name}/decrease-stock")
 def decrease_product_stock_by_name(restaurant_name: str):
     try:
-        # Buscar el restaurante por nombre
-        query = db.collection("retaurants").where("name", "==", restaurant_name).limit(1)
-        results = query.get()
+        # FastAPI ya convierte %20 a espacio, por lo tanto:
+        # restaurant_name podría ser "La Trattoria"
+        cleaned_input_name = restaurant_name.replace(" ", "").lower()
 
-        if not results:
+        # Obtener todos los restaurantes
+        docs = db.collection("retaurants").get()
+
+        # Buscar el documento cuyo nombre (sin espacios) coincida
+        matching_doc = next(
+            (doc for doc in docs if doc.to_dict().get("name", "").replace(" ", "").lower() == cleaned_input_name),
+            None
+        )
+
+        if not matching_doc:
             raise HTTPException(status_code=404, detail="Restaurante no encontrado")
 
-        restaurant_doc = results[0]
-        restaurant_ref = restaurant_doc.reference
-        restaurant_data = restaurant_doc.to_dict()
+        restaurant_ref = matching_doc.reference
+        restaurant_data = matching_doc.to_dict()
         products = restaurant_data.get("products", [])
 
         if not products:
