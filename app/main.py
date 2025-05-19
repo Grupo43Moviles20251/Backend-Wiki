@@ -378,7 +378,7 @@ def decrease_product_stock(restaurant_id: str):
 
         return {
             
-            "order_id": order_id
+            "order_id": order_id[:8]
         } 
 
     except Exception as e:
