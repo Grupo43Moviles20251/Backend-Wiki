@@ -2,7 +2,8 @@ from collections import defaultdict
 import firebase_admin
 from firebase_admin import credentials, firestore
 from fastapi import FastAPI, HTTPException
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -10,6 +11,13 @@ class ScreenTimeData(BaseModel):
     screen_name: str
     duration: int
     timestamp: str
+
+class CancellationTimeStats(BaseModel):
+    hour: int
+    total_cancellations: int
+    percentage: float
+    most_canceled_product: str
+    example_cancellation_time: str
 
 
 # Inicializa la aplicación de Firebase con el archivo de credenciales
@@ -416,3 +424,75 @@ async def get_most_liked_restaurants():
         resultados.append({"mes": mes_anio, "topRestaurantes": restaurantes_ordenados})
 
     return {"analytics": resultados}
+
+@app.get("/cancellation-time-stats", response_model=List[CancellationTimeStats])
+async def get_cancellation_time_stats():
+    """
+    Analyzes at what time of day most order cancellations occur.
+    Returns statistics grouped by hour of day.
+    """
+    # Calculate date range (last 30 days)
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=30)
+    
+    # Initialize data structures
+    hourly_stats = defaultdict(int)
+    product_by_hour = defaultdict(lambda: defaultdict(int))
+    example_times = {}
+    
+    # Get all users
+    users_ref = db.collection('users')
+    users = users_ref.stream()
+    
+    for user in users:
+        # Get user's orders from the last month
+        orders_ref = users_ref.document(user.id).collection('orders')
+        orders_query = orders_ref.where('status', '==', 'cancelled').where('cancelledAt', '>=', start_date.isoformat())
+        
+        for order in orders_query.stream():
+            order_data = order.to_dict()
+            cancel_time_str = order_data.get('cancelledAt')
+            
+            if cancel_time_str:
+                try:
+                    # Parse cancellation time
+                    cancel_time = datetime.fromisoformat(cancel_time_str.replace('Z', '+00:00'))
+                    hour = cancel_time.hour
+                    
+                    # Update statistics
+                    hourly_stats[hour] += 1
+                    
+                    # Track products by hour
+                    product_name = order_data.get('productName', 'Unknown')
+                    product_by_hour[hour][product_name] += 1
+                    
+                    # Store an example time for this hour
+                    if hour not in example_times:
+                        example_times[hour] = cancel_time.isoformat()
+                        
+                except ValueError as e:
+                    print(f"Error parsing cancellation time {cancel_time_str}: {e}")
+    
+    # Calculate total cancellations
+    total_cancellations = sum(hourly_stats.values())
+    
+    # Prepare response
+    results = []
+    for hour in sorted(hourly_stats.keys()):
+        cancellations = hourly_stats[hour]
+        
+        # Find most canceled product for this hour
+        most_canceled_product = max(
+            product_by_hour[hour].items(), 
+            key=lambda x: x[1]
+        )[0] if product_by_hour[hour] else "No data"
+        
+        results.append({
+            "hour": hour,
+            "total_cancellations": cancellations,
+            "percentage": (cancellations / total_cancellations * 100) if total_cancellations > 0 else 0,
+            "most_canceled_product": most_canceled_product,
+            "example_cancellation_time": example_times.get(hour, "")
+        })
+    
+    return results
