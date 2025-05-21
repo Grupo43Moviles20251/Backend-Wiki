@@ -402,3 +402,36 @@ async def get_most_liked_restaurants():
         resultados.append({"mes": mes_anio, "topRestaurantes": restaurantes_ordenados})
 
     return {"analytics": resultados}
+
+
+
+@app.get("/analytics/orders-by-weekday")
+def get_orders_by_weekday():
+    try:
+        orders_ref = db.collection("detail_events").where("event_type", "==", "order").stream()
+        weekday_counts = defaultdict(int)
+
+        for doc in orders_ref:
+            data = doc.to_dict()
+            timestamp = data.get("timestamp")
+            if not timestamp:
+                continue
+
+            # Convert Firestore timestamp to Python datetime
+            if isinstance(timestamp, datetime):
+                dt = timestamp
+            else:
+                dt = timestamp.to_datetime()
+
+            weekday = dt.strftime("%A")  # Monday, Tuesday, etc.
+            weekday_counts[weekday] += 1
+
+        # Opcional: ordenado por mayor cantidad
+        sorted_counts = dict(sorted(weekday_counts.items(), key=lambda x: x[1], reverse=True))
+
+        return {
+            "orders_by_weekday": sorted_counts
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
