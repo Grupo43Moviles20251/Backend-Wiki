@@ -344,51 +344,118 @@ def order_product(request: OrderRequest):
     }
 
     
-@app.get("/order/{restaurant_name}/decrease-stock")
-def decrease_product_stock_by_name(restaurant_name: str):
+# @app.get("/order/{restaurant_name}/decrease-stock/{product_name}/{price}")
+# def decrease_product_stock_by_name(restaurant_name: str, product_name: str, price: float):
+#     try:
+#         # FastAPI ya convierte %20 a espacio, por lo tanto:
+#         # restaurant_name podría ser "La Trattoria"
+#         cleaned_input_name = restaurant_name.replace(" ", "").lower()
+
+#         # Obtener todos los restaurantes
+#         docs = db.collection("retaurants").get()
+
+#         # Buscar el documento cuyo nombre (sin espacios) coincida
+#         matching_doc = next(
+#             (doc for doc in docs if doc.to_dict().get("name", "").replace(" ", "").lower() == cleaned_input_name),
+#             None
+#         )
+
+#         if not matching_doc:
+#             raise HTTPException(status_code=404, detail="Restaurante no encontrado")
+
+#         restaurant_ref = matching_doc.reference
+#         restaurant_data = matching_doc.to_dict()
+#         products = restaurant_data.get("products", [])
+
+#         if not products:
+#             raise HTTPException(status_code=400, detail="El restaurante no tiene productos")
+
+#         product = products[0]
+
+#         if product["amount"] <= 0:
+#             raise HTTPException(status_code=400, detail="El producto ya no tiene stock")
+
+#         # Disminuir el stock
+#         product["amount"] -= 1
+
+#         if product["amount"] == 0:
+#             product["available"] = False
+
+#         # Guardar los cambios
+#         restaurant_ref.update({"products": [product]})
+
+#         order_id = str(uuid4())[:9].upper()
+
+#         return {
+#             "order_id": order_id
+#         }
+
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/order/{restaurant_name}/decrease-stock/{product_name}/{price}")
+def decrease_product_stock_by_name(
+        restaurant_name: str,
+        product_name: str,
+        price: float,
+        current_user: dict = Depends(get_current_user)   # ⬅️ nuevo
+):
     try:
-        # FastAPI ya convierte %20 a espacio, por lo tanto:
-        # restaurant_name podría ser "La Trattoria"
         cleaned_input_name = restaurant_name.replace(" ", "").lower()
 
-        # Obtener todos los restaurantes
+        # ➊ Encontrar el restaurante
         docs = db.collection("retaurants").get()
-
-        # Buscar el documento cuyo nombre (sin espacios) coincida
         matching_doc = next(
-            (doc for doc in docs if doc.to_dict().get("name", "").replace(" ", "").lower() == cleaned_input_name),
+            (doc for doc in docs
+             if doc.to_dict().get("name", "").replace(" ", "").lower() == cleaned_input_name),
             None
         )
-
         if not matching_doc:
             raise HTTPException(status_code=404, detail="Restaurante no encontrado")
 
         restaurant_ref = matching_doc.reference
         restaurant_data = matching_doc.to_dict()
         products = restaurant_data.get("products", [])
-
         if not products:
             raise HTTPException(status_code=400, detail="El restaurante no tiene productos")
 
         product = products[0]
-
         if product["amount"] <= 0:
             raise HTTPException(status_code=400, detail="El producto ya no tiene stock")
 
-        # Disminuir el stock
+        # ➋ Disminuir stock (SIN CAMBIOS)
         product["amount"] -= 1
-
         if product["amount"] == 0:
             product["available"] = False
-
-        # Guardar los cambios
         restaurant_ref.update({"products": [product]})
 
-        order_id = str(uuid4())[:8]
+        # ➌ Crear el ID de la orden
+        order_id = str(uuid4())[:9].upper()
 
-        return {
-            "order_id": order_id
+        # ➍ Registrar la orden bajo el usuario ---------------------------------
+        uid = current_user["uid"]
+        order_data = {
+            "order_id": order_id,
+            "product_name": product_name,
+            "price": price
         }
+
+        user_orders_ref = db.collection("orders").document(uid)
+        doc = user_orders_ref.get()
+        if doc.exists:
+            # Añadir sin duplicar con ArrayUnion
+            user_orders_ref.update({
+                "orders": firestore.ArrayUnion([order_data])
+            })
+        else:
+            # Crear el documento con la primera orden
+            user_orders_ref.set({
+                "orders": [order_data]
+            })
+        # ---------------------------------------------------------------------
+
+        # ➎ Respuesta (SIN CAMBIOS)
+        return {"order_id": order_id}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
