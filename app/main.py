@@ -461,3 +461,50 @@ def decrease_product_stock_by_name(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/orders/{user_id}")
+def get_orders_by_user(user_id: str):
+    try:
+        user_orders_ref = db.collection("orders").document(user_id)
+        doc = user_orders_ref.get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Usuario no tiene órdenes o no existe")
+
+        data = doc.to_dict()
+        orders = data.get("orders", [])
+        return {"user_id": user_id, "orders": orders}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    
+@app.put("/orders/{user_id}/cancel/{order_id}")
+def cancel_order(user_id: str, order_id: str):
+    try:
+        user_orders_ref = db.collection("orders").document(user_id)
+        doc = user_orders_ref.get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Usuario no tiene órdenes o no existe")
+
+        data = doc.to_dict()
+        orders = data.get("orders", [])
+
+        # Buscar la orden por order_id
+        order_found = False
+        for order in orders:
+            if order.get("order_id") == order_id:
+                if order.get("state") == "cancelled":
+                    raise HTTPException(status_code=400, detail="La orden ya está cancelada")
+                order["state"] = "cancelled"
+                order_found = True
+                break
+
+        if not order_found:
+            raise HTTPException(status_code=404, detail="Orden no encontrada")
+
+        # Actualizar la lista completa con el cambio
+        user_orders_ref.update({"orders": orders})
+
+        return {"message": f"Orden {order_id} cancelada correctamente"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
