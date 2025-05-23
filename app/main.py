@@ -344,7 +344,7 @@ def order_product(request: OrderRequest):
     }
 
     
-# @app.get("/order/{restaurant_name}/decrease-stock/{product_name}/{price}")
+# @app.get("/order/{restaurant_name}/decrease-stock")
 # def decrease_product_stock_by_name(restaurant_name: str, product_name: str, price: float):
 #     try:
 #         # FastAPI ya convierte %20 a espacio, por lo tanto:
@@ -393,12 +393,12 @@ def order_product(request: OrderRequest):
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/order/{restaurant_name}/decrease-stock/{product_name}/{price}")
+@app.get("/order/{restaurant_name}/decrease-stock/{product_name}/{price}/{u_id}")
 def decrease_product_stock_by_name(
         restaurant_name: str,
         product_name: str,
         price: float,
-        current_user: dict = Depends(get_current_user)   # ⬅️ nuevo
+        u_id: str
 ):
     try:
         cleaned_input_name = restaurant_name.replace(" ", "").lower()
@@ -433,7 +433,7 @@ def decrease_product_stock_by_name(
         order_id = str(uuid4())[:9].upper()
 
         # ➍ Registrar la orden bajo el usuario ---------------------------------
-        uid = current_user["uid"]
+        uid = u_id
         order_data = {
             "order_id": order_id,
             "product_name": product_name,
