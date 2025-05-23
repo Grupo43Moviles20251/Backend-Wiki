@@ -2,7 +2,7 @@ from datetime import datetime
 import uuid
 from uuid import uuid4
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi import security, status
+from fastapi import security, Response, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
