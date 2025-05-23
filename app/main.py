@@ -2,7 +2,7 @@ from datetime import datetime
 import uuid
 from uuid import uuid4
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi import security
+from fastapi import security, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
@@ -477,7 +477,7 @@ def get_orders_by_user(user_id: str):
         raise HTTPException(status_code=500, detail=str(e))
     
 
-@app.put("/orders/{user_id}/cancel/{order_id}")
+@app.put("/orders/{user_id}/cancel/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
 def cancel_order(user_id: str, order_id: str):
     try:
         user_orders_ref = db.collection("orders").document(user_id)
@@ -504,7 +504,7 @@ def cancel_order(user_id: str, order_id: str):
         # Actualizar la lista completa con el cambio
         user_orders_ref.update({"orders": orders})
 
-        return {"message": f"Orden {order_id} cancelada correctamente"}
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
