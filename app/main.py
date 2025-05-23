@@ -430,7 +430,7 @@ def decrease_product_stock_by_name(
         restaurant_ref.update({"products": [product]})
 
         # ➌ Crear el ID de la orden
-        order_id = str(uuid4())[:9].upper()
+        order_id = str(uuid4())[:8].upper()
 
         # ➍ Registrar la orden bajo el usuario ---------------------------------
         uid = u_id
