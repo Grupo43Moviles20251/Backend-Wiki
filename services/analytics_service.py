@@ -435,3 +435,22 @@ def get_orders_by_weekday():
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/android-version-summary")
+def get_android_version_summary():
+    try:
+        devices_ref = db.collection("userDevices").stream()
+        version_counts = defaultdict(int)
+
+        for doc in devices_ref:
+            data = doc.to_dict()
+            os_version = data.get("osVersion", "Unknown")
+            version_counts[os_version] += 1
+
+        result = [{"android_version": version, "count": count} for version, count in version_counts.items()]
+        result.sort(key=lambda x: x["count"], reverse=True)
+
+        return {"android_version_distribution": result}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving Android version summary: {str(e)}")
