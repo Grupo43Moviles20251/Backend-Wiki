@@ -472,7 +472,7 @@ def get_orders_by_user(user_id: str):
 
         data = doc.to_dict()
         orders = data.get("orders", [])
-        return {"orders": orders}
+        return {orders}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
