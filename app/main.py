@@ -472,11 +472,11 @@ def get_orders_by_user(user_id: str):
 
         data = doc.to_dict()
         orders = data.get("orders", [])
-        return {"user_id": user_id, "orders": orders}
+        return {"orders": orders}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-    
+
 @app.put("/orders/{user_id}/cancel/{order_id}")
 def cancel_order(user_id: str, order_id: str):
     try:
