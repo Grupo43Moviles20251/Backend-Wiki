@@ -439,7 +439,7 @@ def decrease_product_stock_by_name(
             "product_name": product_name,
             "price": price,
             "state": "pending",
-            "date": datetime.now()
+            "date": datetime.now().strftime("%d/%m/%Y/%H")
         }
 
         user_orders_ref = db.collection("orders").document(uid)
