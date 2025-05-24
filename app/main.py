@@ -477,7 +477,7 @@ def get_orders_by_user(user_id: str):
         raise HTTPException(status_code=500, detail=str(e))
     
 
-@app.put("/orders/{user_id}/cancel/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.get("/orders/{user_id}/cancel/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
 def cancel_order(user_id: str, order_id: str):
     try:
         user_orders_ref = db.collection("orders").document(user_id)
