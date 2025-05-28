@@ -1,7 +1,8 @@
 from datetime import datetime
 import uuid
+from uuid import uuid4
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi import security
+from fastapi import security, Response, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
@@ -341,3 +342,169 @@ def order_product(request: OrderRequest):
         "quantity_ordered": quantity,
         "restaurant": restaurant_data.get("name"),
     }
+
+    
+# @app.get("/order/{restaurant_name}/decrease-stock")
+# def decrease_product_stock_by_name(restaurant_name: str, product_name: str, price: float):
+#     try:
+#         # FastAPI ya convierte %20 a espacio, por lo tanto:
+#         # restaurant_name podría ser "La Trattoria"
+#         cleaned_input_name = restaurant_name.replace(" ", "").lower()
+
+#         # Obtener todos los restaurantes
+#         docs = db.collection("retaurants").get()
+
+#         # Buscar el documento cuyo nombre (sin espacios) coincida
+#         matching_doc = next(
+#             (doc for doc in docs if doc.to_dict().get("name", "").replace(" ", "").lower() == cleaned_input_name),
+#             None
+#         )
+
+#         if not matching_doc:
+#             raise HTTPException(status_code=404, detail="Restaurante no encontrado")
+
+#         restaurant_ref = matching_doc.reference
+#         restaurant_data = matching_doc.to_dict()
+#         products = restaurant_data.get("products", [])
+
+#         if not products:
+#             raise HTTPException(status_code=400, detail="El restaurante no tiene productos")
+
+#         product = products[0]
+
+#         if product["amount"] <= 0:
+#             raise HTTPException(status_code=400, detail="El producto ya no tiene stock")
+
+#         # Disminuir el stock
+#         product["amount"] -= 1
+
+#         if product["amount"] == 0:
+#             product["available"] = False
+
+#         # Guardar los cambios
+#         restaurant_ref.update({"products": [product]})
+
+#         order_id = str(uuid4())[:9].upper()
+
+#         return {
+#             "order_id": order_id
+#         }
+
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/order/{restaurant_name}/decrease-stock/{product_name}/{price}/{u_id}")
+def decrease_product_stock_by_name(
+        restaurant_name: str,
+        product_name: str,
+        price: float,
+        u_id: str
+):
+    try:
+        cleaned_input_name = restaurant_name.replace(" ", "").lower()
+
+        # ➊ Encontrar el restaurante
+        docs = db.collection("retaurants").get()
+        matching_doc = next(
+            (doc for doc in docs
+             if doc.to_dict().get("name", "").replace(" ", "").lower() == cleaned_input_name),
+            None
+        )
+        if not matching_doc:
+            raise HTTPException(status_code=404, detail="Restaurante no encontrado")
+
+        restaurant_ref = matching_doc.reference
+        restaurant_data = matching_doc.to_dict()
+        products = restaurant_data.get("products", [])
+        if not products:
+            raise HTTPException(status_code=400, detail="El restaurante no tiene productos")
+
+        product = products[0]
+        if product["amount"] <= 0:
+            raise HTTPException(status_code=400, detail="El producto ya no tiene stock")
+
+        # ➋ Disminuir stock (SIN CAMBIOS)
+        product["amount"] -= 1
+        if product["amount"] == 0:
+            product["available"] = False
+        restaurant_ref.update({"products": [product]})
+
+        # ➌ Crear el ID de la orden
+        order_id = str(uuid4())[:8].upper()
+
+        # ➍ Registrar la orden bajo el usuario ---------------------------------
+        uid = u_id
+        order_data = {
+            "order_id": order_id,
+            "product_name": product_name,
+            "price": price,
+            "state": "pending",
+            "date": datetime.now().strftime("%d/%m/%Y/%H:%M")
+        }
+
+        user_orders_ref = db.collection("orders").document(uid)
+        doc = user_orders_ref.get()
+        if doc.exists:
+            # Añadir sin duplicar con ArrayUnion
+            user_orders_ref.update({
+                "orders": firestore.ArrayUnion([order_data])
+            })
+        else:
+            # Crear el documento con la primera orden
+            user_orders_ref.set({
+                "orders": [order_data]
+            })
+        # ---------------------------------------------------------------------
+
+        # ➎ Respuesta (SIN CAMBIOS)
+        return {"order_id": order_id}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/orders/{user_id}")
+def get_orders_by_user(user_id: str):
+    try:
+        user_orders_ref = db.collection("orders").document(user_id)
+        doc = user_orders_ref.get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Usuario no tiene órdenes o no existe")
+
+        data = doc.to_dict()
+        orders = data.get("orders", [])
+        return orders
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+@app.get("/orders/{user_id}/cancel/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
+def cancel_order(user_id: str, order_id: str):
+    try:
+        user_orders_ref = db.collection("orders").document(user_id)
+        doc = user_orders_ref.get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Usuario no tiene órdenes o no existe")
+
+        data = doc.to_dict()
+        orders = data.get("orders", [])
+
+        # Buscar la orden por order_id
+        order_found = False
+        for order in orders:
+            if order.get("order_id") == order_id:
+                if order.get("state") == "cancelled":
+                    raise HTTPException(status_code=400, detail="La orden ya está cancelada")
+                order["state"] = "cancelled"
+                order_found = True
+                break
+
+        if not order_found:
+            raise HTTPException(status_code=404, detail="Orden no encontrada")
+
+        # Actualizar la lista completa con el cambio
+        user_orders_ref.update({"orders": orders})
+
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

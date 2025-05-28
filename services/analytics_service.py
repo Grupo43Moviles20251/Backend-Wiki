@@ -358,21 +358,7 @@ def obtener_top_productos():
 
     return {"topProductos": productos_ordenados}
     
-#Modelo Pydantic para capturar cada evento en la página de detalle
-class DetailEvent(BaseModel):
-    restaurant_id: str
-    event_type: str             # "order" o "directions"
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-#Endpoint para loguear cada pulsación en DetailPage
-@app.post("/detail-events")
-async def log_detail_event(event: DetailEvent):
-    try:
-        # guarda en la colección "detail_events"
-        db.collection("detail_events").add(event.dict())
-        return {"message": "Event logged successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error logging event: {e}")
 
 #Endpoint para devolver conteos totales de cada tipo de evento
 @app.get("/analytics/detail-feature-usage")
@@ -425,6 +411,96 @@ async def get_most_liked_restaurants():
 
     return {"analytics": resultados}
 
+
+
+@app.get("/analytics/orders-by-weekday")
+def get_orders_by_weekday():
+    try:
+        orders_ref = db.collection("detail_events").where("event_type", "==", "order").stream()
+        weekday_counts = defaultdict(int)
+
+        for doc in orders_ref:
+            data = doc.to_dict()
+            timestamp = data.get("timestamp")
+            if not timestamp:
+                continue
+
+            # Convert Firestore timestamp to Python datetime
+            if isinstance(timestamp, datetime):
+                dt = timestamp
+            else:
+                dt = timestamp.to_datetime()
+
+            weekday = dt.strftime("%A")  # Monday, Tuesday, etc.
+            weekday_counts[weekday] += 1
+
+        # Opcional: ordenado por mayor cantidad
+        sorted_counts = dict(sorted(weekday_counts.items(), key=lambda x: x[1], reverse=True))
+
+        return {
+            "orders_by_weekday": sorted_counts
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/android-version-summary")
+def get_android_version_summary():
+    try:
+        devices_ref = db.collection("userDevices").stream()
+        version_counts = defaultdict(int)
+
+        for doc in devices_ref:
+            data = doc.to_dict()
+            os_version = data.get("osVersion", "Unknown")
+            version_counts[os_version] += 1
+
+        result = [{"android_version": version, "count": count} for version, count in version_counts.items()]
+        result.sort(key=lambda x: x["count"], reverse=True)
+
+        return {"android_version_distribution": result}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving Android version summary: {str(e)}")
+    
+
+@app.get("/analytics/most-products-ordered")
+async def get_most_products_ordered():
+    # Obtener las visitas a los restaurantes desde Firestore
+    visitas_ref = db.collection('orders_product')
+    visitas = visitas_ref.stream()
+
+    restaurantes_por_mes = defaultdict(lambda: defaultdict(int))  # {mes: {restaurante: visitas}}
+
+    # Contar las visitas por mes y restaurante
+    for visita in visitas:
+        data = visita.to_dict()
+        document_date = visita.id  # Usamos el ID del documento como la fecha (por ejemplo, "2025-04-26")
+        
+        # Extraer solo el mes y año (formato YYYY-MM)
+        mes_anio = document_date[:7]  # "2025-04" (primeros 7 caracteres)
+
+        for restaurant_name, visits in data.items():
+            if restaurant_name != "last_visited_by":  # Ignorar el campo 'last_visited_by'
+                try:
+                    visitas_restaurante = int(visits)
+                except ValueError:
+                    visitas_restaurante = 0
+
+                # Agregar al contador total de visitas por mes y restaurante
+                restaurantes_por_mes[mes_anio][restaurant_name] += visitas_restaurante
+
+    # Preparar la lista de resultados por mes
+    resultados = []
+    for mes_anio, restaurantes in restaurantes_por_mes.items():
+        restaurantes_ordenados = sorted(
+            [{"productName": k, "totalOrdered": v} for k, v in restaurantes.items()],
+            key=lambda x: x["totalOrdered"],
+            reverse=True
+        )
+        resultados.append({"mes": mes_anio, "topProductos": restaurantes_ordenados[:5]})
+
+    return resultados
 @app.get("/cancellation-time-stats", response_model=List[CancellationTimeStats])
 async def get_cancellation_time_stats():
     """
