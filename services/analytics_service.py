@@ -486,8 +486,8 @@ async def get_most_products_ordered():
     resultados = []
     for mes_anio, restaurantes in restaurantes_por_mes.items():
         restaurantes_ordenados = sorted(
-            [{"restaurantName": k, "totalVisits": v} for k, v in restaurantes.items()],
-            key=lambda x: x["totalVisits"],
+            [{"productName": k, "totalOrdered": v} for k, v in restaurantes.items()],
+            key=lambda x: x["totalOrdered"],
             reverse=True
         )
         resultados.append({"mes": mes_anio, "topProductos": restaurantes_ordenados[:5]})
