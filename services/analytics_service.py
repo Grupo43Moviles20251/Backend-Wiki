@@ -454,3 +454,42 @@ def get_android_version_summary():
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving Android version summary: {str(e)}")
+    
+
+@app.get("/analytics/most-products-ordered")
+async def get_most_products_ordered():
+    # Obtener las visitas a los restaurantes desde Firestore
+    visitas_ref = db.collection('orders_product')
+    visitas = visitas_ref.stream()
+
+    restaurantes_por_mes = defaultdict(lambda: defaultdict(int))  # {mes: {restaurante: visitas}}
+
+    # Contar las visitas por mes y restaurante
+    for visita in visitas:
+        data = visita.to_dict()
+        document_date = visita.id  # Usamos el ID del documento como la fecha (por ejemplo, "2025-04-26")
+        
+        # Extraer solo el mes y año (formato YYYY-MM)
+        mes_anio = document_date[:7]  # "2025-04" (primeros 7 caracteres)
+
+        for restaurant_name, visits in data.items():
+            if restaurant_name != "last_visited_by":  # Ignorar el campo 'last_visited_by'
+                try:
+                    visitas_restaurante = int(visits)
+                except ValueError:
+                    visitas_restaurante = 0
+
+                # Agregar al contador total de visitas por mes y restaurante
+                restaurantes_por_mes[mes_anio][restaurant_name] += visitas_restaurante
+
+    # Preparar la lista de resultados por mes
+    resultados = []
+    for mes_anio, restaurantes in restaurantes_por_mes.items():
+        restaurantes_ordenados = sorted(
+            [{"restaurantName": k, "totalVisits": v} for k, v in restaurantes.items()],
+            key=lambda x: x["totalVisits"],
+            reverse=True
+        )
+        resultados.append({"mes": mes_anio, "topProductos": restaurantes_ordenados[:5]})
+
+    return {"analytics": resultados}
