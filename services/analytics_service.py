@@ -492,4 +492,4 @@ async def get_most_products_ordered():
         )
         resultados.append({"mes": mes_anio, "topProductos": restaurantes_ordenados[:5]})
 
-    return {"analytics": resultados}
+    return resultados
